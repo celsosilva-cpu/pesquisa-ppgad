@@ -443,14 +443,19 @@ const ENDPOINT_URL = "";
 const SUBMISSION_ID = "s_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,10);
 // Tempo de início — gravado no clique do botão "Começar"; calculado no envio.
 let _tempoInicio = null;
-let _jaEnviado = false;
+let _envioStatus = "pendente"; // "pendente" | "enviando" | "ok" | "erro"
+let _payloadEnvio = null;       // montado uma vez; reaproveitado em retentativas
 
 function ordemDaSecao(secId){
   // Reconstrói a ordem dos itens vista pelo respondente, usando a mesma lógica de visible().
   const sec = SECTIONS.find(s => s.id === secId);
   if(!sec) return [];
   const seed = (SESSION_SEED + (SECTION_SEED_OFFSET[secId]||0) * 7919) >>> 0;
-  return shuffleWithSeed(sec.questions, seed).map(q => q.id);
+  // mesmo padding de montarPayloadSubmissao: GC1 -> GC01 (GOV/DEC já têm 2 díg.),
+  // para a ordem casar com os nomes de coluna GC01..GC10 na planilha.
+  return shuffleWithSeed(sec.questions, seed).map(function(q){
+    return /^GC\d+$/.test(q.id) ? "GC" + q.id.replace("GC","").padStart(2,"0") : q.id;
+  });
 }
 
 function montarPayloadSubmissao(){
@@ -495,10 +500,15 @@ function enviarParaServidor(payload){
 }
 
 function enviarSubmissaoFinal(){
-  if(_jaEnviado) return;
-  _jaEnviado = true;
-  enviarParaServidor(montarPayloadSubmissao()).then(function(res){
-    console.log("[envio]", res);
+  // não reenvia se em curso ou já confirmado; em "erro"/"pendente" pode (re)tentar.
+  if(_envioStatus === "enviando" || _envioStatus === "ok") return;
+  if(!_payloadEnvio) _payloadEnvio = montarPayloadSubmissao(); // mesmo submission_id => idempotente no servidor
+  _envioStatus = "enviando"; render();
+  enviarParaServidor(_payloadEnvio).then(function(res){
+    _envioStatus = (res && res.ok) ? "ok" : "erro";
+    console.log("[envio]", res); render();
+  }).catch(function(err){
+    _envioStatus = "erro"; console.log("[envio] erro", err); render();
   });
 }
 
@@ -765,37 +775,50 @@ function render(){
   }
 
   if(state.phase==="done"){
+    var _st = _envioStatus, _eyebrow, _title, _sub, _corpo;
+    if(_st === "ok"){
+      _eyebrow = "Pesquisa concluída"; _title = "Respostas registradas";
+      _sub = "Obrigado pela colaboração. Suas respostas foram salvas e serão analisadas de forma agregada, <b>sem identificação individual</b>.";
+    } else if(_st === "erro"){
+      _eyebrow = "Quase lá"; _title = "Não foi possível enviar";
+      _sub = "Suas respostas <b>não foram perdidas</b>. Verifique sua conexão e toque em <b>Tentar novamente</b>.";
+    } else {
+      _eyebrow = "Pesquisa concluída"; _title = "Enviando suas respostas…";
+      _sub = "Só um instante — estamos registrando suas respostas.";
+    }
+
+    var _footer = '<div class="done-footer"><img class="done-emblem" src="'+LOGO_DARK+'" alt="PPGAD"><div class="done-foot-line">Pesquisa de Mestrado</div><div class="done-foot-inst">PPGAD · Universidade Federal do Pará</div></div>';
+
+    if(_st === "ok"){
+      _corpo = ''
+      + '<div class="done-shortline"></div>'
+      + '<div class="email-box">'
+      +   '<div class="email-header"><span class="ico-wrap">'+ICON.mail(18)+'</span><div><b>Receber resultados </b><span class="opt-tag">(opcional)</span></div></div>'
+      +   '<p class="email-desc">Informe seu e-mail caso deseje receber um resumo dos resultados da pesquisa.</p>'
+      +   '<div class="email-row"><input class="text-input sm" id="emailInput" inputmode="email" placeholder="seu@email.com (opcional)"><button class="btn-email" id="regBtn">Receber resultados</button></div>'
+      + '</div>'
+      + '<div class="done-divider"><span class="done-divider-line"></span><span class="done-divider-text">ou</span><span class="done-divider-line"></span></div>'
+      + '<button class="done-close" id="closeBtn"><span class="ico">'+ICON.left(18)+'</span><div><b>Encerrar pesquisa</b><span>Você pode fechar esta página com segurança.</span></div></button>';
+    } else if(_st === "erro"){
+      _corpo = '<div class="done-shortline"></div><div class="nav-center"><button class="btn-cont" id="retryBtn">Tentar novamente '+ICON.arrowR(16)+'</button></div>';
+    } else {
+      _corpo = '<div class="done-shortline"></div><p class="done-sub" style="display:flex;align-items:center;justify-content:center;gap:.5rem"><span class="dot-pulse"></span> Enviando…</p>';
+    }
+
     app.innerHTML = ''
     + '<div class="card done-card anim-card">'
     +   '<div style="padding:clamp(.75rem,2vw,1.25rem) clamp(1.25rem,4vw,2.5rem) 0"><div class="frieze"></div></div>'
     +   '<div class="done-body">'
-
     +     '<div class="done-diamond-wrap anim-tick"><span class="done-diamond-line"></span><span class="done-diamond">'+ICON.diamond(32)+'</span><span class="done-diamond-line"></span></div>'
-    +     '<p class="done-eyebrow">Pesquisa concluída</p>'
-    +     '<h1 class="done-title">Respostas registradas</h1>'
-    +     '<p class="done-sub">Obrigado pela colaboração. Suas respostas foram salvas e serão analisadas de forma agregada, <b>sem identificação individual</b>.</p>'
-
-    +     '<div class="done-shortline"></div>'
-
-    +     '<div class="email-box">'
-    +       '<div class="email-header"><span class="ico-wrap">'+ICON.mail(18)+'</span><div><b>Receber resultados </b><span class="opt-tag">(opcional)</span></div></div>'
-    +       '<p class="email-desc">Informe seu e-mail caso deseje receber um resumo dos resultados da pesquisa.</p>'
-    +       '<div class="email-row"><input class="text-input sm" id="emailInput" inputmode="email" placeholder="seu@email.com (opcional)"><button class="btn-email" id="regBtn">Receber resultados</button></div>'
-    +     '</div>'
-
-    +     '<div class="done-divider"><span class="done-divider-line"></span><span class="done-divider-text">ou</span><span class="done-divider-line"></span></div>'
-
-    +     '<button class="done-close" id="closeBtn"><span class="ico">'+ICON.left(18)+'</span><div><b>Encerrar pesquisa</b><span>Você pode fechar esta página com segurança.</span></div></button>'
-
-    +     '<div class="done-footer">'
-    +       '<img class="done-emblem" src="'+LOGO_DARK+'" alt="PPGAD">'
-    +       '<div class="done-foot-line">Pesquisa de Mestrado</div>'
-    +       '<div class="done-foot-inst">PPGAD · Universidade Federal do Pará</div>'
-    +     '</div>'
-
+    +     '<p class="done-eyebrow">'+_eyebrow+'</p>'
+    +     '<h1 class="done-title">'+_title+'</h1>'
+    +     '<p class="done-sub">'+_sub+'</p>'
+    +     _corpo
+    +     _footer
     +   '</div>'
     + '</div>';
-    document.getElementById("regBtn").onclick = (e)=>{
+    var _reg = document.getElementById("regBtn");
+    if(_reg) _reg.onclick = (e)=>{
       const input = document.getElementById("emailInput");
       const email = (input.value || "").trim();
       if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
@@ -808,9 +831,12 @@ function render(){
         if(!(res && res.ok)) e.target.disabled = false;
       });
     };
-    document.getElementById("closeBtn").onclick = ()=>{};
-    // Envia a submissão automaticamente ao chegar na tela done (idempotente).
-    enviarSubmissaoFinal();
+    var _close = document.getElementById("closeBtn");
+    if(_close) _close.onclick = ()=>{};
+    var _retry = document.getElementById("retryBtn");
+    if(_retry) _retry.onclick = ()=>{ enviarSubmissaoFinal(); };
+    // Dispara o envio só uma vez ao chegar na tela; re-renders por status não reenviam.
+    if(_envioStatus === "pendente") enviarSubmissaoFinal();
     return;
   }
 }

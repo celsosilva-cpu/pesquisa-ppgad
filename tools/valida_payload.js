@@ -102,6 +102,11 @@ need(Array.isArray(p.ordem_gc)  && p.ordem_gc.length === 10,  'ordem_gc != 10');
 need(Array.isArray(p.ordem_gov) && p.ordem_gov.length === 10, 'ordem_gov != 10');
 need(Array.isArray(p.ordem_dec) && p.ordem_dec.length === 16, 'ordem_dec != 16');
 
+// edição #1: ordens devem estar padronizadas (2 díg.) iguais aos nomes de coluna
+need(p.ordem_gc.every(id => /^GC\d\d$/.test(id)),  'ordem_gc sem padding (ex.: GC4 em vez de GC04)');
+need(p.ordem_gov.every(id => /^GOV\d\d$/.test(id)), 'ordem_gov fora do padrão GOVnn');
+need(p.ordem_dec.every(id => /^DEC\d\d$/.test(id)), 'ordem_dec fora do padrão DECnn');
+
 // 6) relatório
 console.log('--- valida_payload ---');
 console.log('escalas conferidas : ' + escalas.length + ' (10 GC + 10 GOV + 16 DEC)');
