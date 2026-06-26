@@ -1,0 +1,8 @@
+# Normaliza quebras de linha para LF no repo e no checkout.
+# Mantém o HTML servido (GitHub Pages) idêntico byte a byte à fonte,
+# independente do Windows. UTF-8 é preservado (git não altera encoding).
+* text=auto eol=lf
+*.html text eol=lf
+*.md   text eol=lf
+*.gs   text eol=lf
+*.js   text eol=lf

@@ -1,0 +1,28 @@
+# ============================================================
+# DADOS DE RESPONDENTES — NUNCA VERSIONAR (LGPD / CNS 510/2016)
+# Exportações da planilha, bases SPSS e qualquer recorte de dados
+# ficam FORA do git, mesmo em repositório privado.
+# ============================================================
+*.xlsx
+*.xls
+*.sav
+*.csv
+*.tsv
+/dados/
+/data/
+/exports/
+
+# Credenciais / segredos (caso algum dia entrem na pasta)
+*.env
+.env
+credenciais*.json
+client_secret*.json
+token*.json
+
+# Cruft de SO / editor
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+*.tmp
+*~
