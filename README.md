@@ -9,7 +9,7 @@ chefia, coordenação).
 
 | Arquivo | O que é |
 |---|---|
-| `pesquisa_prototipo.html` | Questionário (single-file, sem dependências). É o que vai ao ar. |
+| `index.html` | Questionário (single-file, sem dependências). É o que vai ao ar (GitHub Pages). |
 | `apps_script.gs` | Back-end Google Apps Script: recebe submissões/e-mails e grava na Planilha. |
 | `instalacao.md` | Como conectar HTML ↔ Apps Script ↔ Planilha (7 passos). |
 | `exportar_para_spss.md` | Da Planilha ao `.sav`: rótulos, medida, alfa de Cronbach. |
@@ -19,7 +19,7 @@ chefia, coordenação).
 ## Fluxo de dados
 
 ```
-Respondente → pesquisa_prototipo.html → (POST text/plain) → Apps Script → Planilha Google
+Respondente → index.html → (POST text/plain) → Apps Script → Planilha Google
                                                                               ├─ aba "respostas" (dados, anônimos)
                                                                               └─ aba "emails" (opcional, SEM vínculo)
 ```

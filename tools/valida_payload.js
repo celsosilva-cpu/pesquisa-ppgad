@@ -1,7 +1,7 @@
 /**
  * valida_payload.js — validação FIEL do payload do questionário.
  *
- * Extrai o <script> real do pesquisa_prototipo.html, executa as funções de
+ * Extrai o <script> real do index.html, executa as funções de
  * verdade num sandbox (vm) com stubs de navegador, preenche um conjunto
  * completo de respostas e confere o que montarPayloadSubmissao() produz —
  * o mesmo objeto que seria enviado ao Apps Script.
@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const HTML = path.join(__dirname, '..', 'pesquisa_prototipo.html');
+const HTML = path.join(__dirname, '..', 'index.html');
 const html = fs.readFileSync(HTML, 'utf8');
 
 // 1) extrai o ÚLTIMO bloco <script>...</script> (o app)

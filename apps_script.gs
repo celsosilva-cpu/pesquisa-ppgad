@@ -2,7 +2,7 @@
  * ============================================================================
  * Back-end de coleta — Pesquisa PPGAD/UFPA (Celso Cardoso Silva)
  * ----------------------------------------------------------------------------
- * Recebe os POSTs do pesquisa_prototipo.html e grava na Planilha vinculada.
+ * Recebe os POSTs do index.html e grava na Planilha vinculada.
  *
  * Como instalar: ver instalacao.md (criar Planilha → colar este código →
  * publicar como App da Web → copiar a URL /exec → colar em ENDPOINT_URL no HTML).

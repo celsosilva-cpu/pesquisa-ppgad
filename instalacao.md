@@ -1,6 +1,6 @@
 # Instalação — conectar HTML ↔ Apps Script ↔ Planilha
 
-Tempo: ~15 minutos, uma vez só. No fim, o `pesquisa_prototipo.html` grava as
+Tempo: ~15 minutos, uma vez só. No fim, o `index.html` grava as
 respostas direto numa Planilha Google sua.
 
 > As abas (`respostas`, `emails`) e seus cabeçalhos são criados **automaticamente**
@@ -47,7 +47,7 @@ respostas direto numa Planilha Google sua.
 
 ## Passo 5 — Colar a URL no questionário
 
-1. Abra `pesquisa_prototipo.html` num editor de texto.
+1. Abra `index.html` num editor de texto.
 2. Vá à **linha 440**:
    ```js
    const ENDPOINT_URL = "";
@@ -62,7 +62,7 @@ respostas direto numa Planilha Google sua.
 
 ## Passo 6 — Smoke test (envio real)
 
-1. Abra o `pesquisa_prototipo.html` (duplo clique abre no navegador).
+1. Abra o `index.html` (duplo clique abre no navegador).
 2. Responda rápido até o fim e finalize.
 3. Na Planilha, a aba **`respostas`** deve ganhar **1 linha** com:
    - colunas de escala (`GC01`…`DEC36`) com **números 1–7**;
@@ -77,7 +77,7 @@ respostas direto numa Planilha Google sua.
 
 Depois que o teste passar, esta versão do HTML (já com a URL) entra no git:
 ```
-git -C "C:/Users/CelsoCardosoSilva/pesquisa-ppgad" add pesquisa_prototipo.html
+git -C "C:/Users/CelsoCardosoSilva/pesquisa-ppgad" add index.html
 git -C "C:/Users/CelsoCardosoSilva/pesquisa-ppgad" commit -m "feat: conectar HTML ao Apps Script (ENDPOINT_URL)"
 ```
 
