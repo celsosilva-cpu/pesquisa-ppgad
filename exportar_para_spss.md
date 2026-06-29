@@ -160,3 +160,42 @@ a resposta:
 - [ ] medidas ajustadas (D3 escala; D4/D7/D8 ordinais)
 - [ ] `.sav` salvo fora do git
 - [ ] α de GC, GOV e DEC calculados
+
+---
+
+## Abas auxiliares na Planilha (`leitura` e `painel`)
+
+Além da `respostas` (base canônica, com as escalas em número 1–7 — **é dela que sai
+o SPSS**), o `apps_script.gs` cria duas abas **por fórmula**, que se atualizam
+sozinhas a cada nova resposta. Não viram segunda fonte de verdade: leem da
+`respostas`.
+
+Como criar/atualizar: na Planilha, menu **Coleta PPGAD → “Configurar aba leitura”**
+e **“Configurar aba painel”** (ou rode `configurarAbaLeitura` /
+`configurarAbaPainel` no editor do Apps Script). Pode rodar quantas vezes quiser —
+cada execução recria a aba do zero. Não exige re-deploy do Web App.
+
+- **`leitura`** — espelho legível: escalas 1–7 traduzidas para rótulo
+  (Nunca…Sempre), `completo` como Sim/Não, duração em minutos, sem o ruído técnico
+  (semente, ordem_*, user_agent). É a versão "normal" para leitura humana; **não**
+  use para o SPSS (lá os números são necessários).
+- **`painel`** — dashboard de contagens: KPIs (total, % completas, duração mediana)
+  e frequência por IES (D1), segmento (D9), função (D5), grau (D4), gênero (D2) e
+  formação em gestão (D6), via `QUERY`, com gráficos de barras. Descobre categorias
+  novas (inclusive "Outro") sozinho.
+
+> As fórmulas são gravadas em inglês/vírgula no código, mas o `setFormula()` deste
+> ambiente interpreta no **locale pt-BR** da planilha; por isso o código usa `;`
+> como separador. Se a planilha for recriada em locale US, troque o `SEP`/`S`
+> para `,` nas funções de configuração.
+
+### Filtros interativos (Tabela Dinâmica + Segmentadores)
+
+Para "fatiar clicando" (ex.: IES × segmento), o nativo do Sheets:
+
+1. Aba `respostas` → **Inserir → Tabela dinâmica** (em nova planilha ou na `painel`).
+2. **Linhas → `D1`**; **Valores → `submission_id`** resumido por **CONTAR.VAL**
+   (contagem). Para cruzar, ponha outra dimensão em **Colunas** (ex.: `D9`).
+3. Com a tabela dinâmica selecionada: **Inserir → Segmentador** → escolha o campo
+   (`D1`, `D9`, `D5`…). Cada segmentador filtra a tabela ao clicar; vários podem
+   ficar ativos ao mesmo tempo.

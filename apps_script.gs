@@ -18,6 +18,12 @@
 
 var ABA_RESPOSTAS = 'respostas';
 var ABA_EMAILS    = 'emails';
+var ABA_LEITURA   = 'leitura'; // espelho legível de "respostas" (só leitura, por fórmula)
+var ABA_PAINEL    = 'painel';  // dashboard de contagens (QUERY, atualiza sozinho)
+
+/* Rótulos da escala 1–7 — casa com exportar_para_spss.md (Passo 3). */
+var ESCALA_ROTULOS = ['Nunca', 'Raramente', 'Poucas vezes', 'Às vezes',
+                      'Muitas vezes', 'Quase sempre', 'Sempre'];
 
 /* Ordem CANÔNICA das colunas de "respostas" — casa 1:1 com os nomes no SPSS.
    Mexer aqui = mexer no exportar_para_spss.md. */
@@ -202,4 +208,179 @@ function _json(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/* ---------------------------------------------------------------------------
+ * Aba "leitura" — espelho LEGÍVEL de "respostas" (versão "normal"; a "respostas"
+ * segue sendo a base canônica para SPSS, com os números 1–7).
+ *
+ * É montada por FÓRMULA: a aba se atualiza sozinha a cada nova submissão e nunca
+ * vira uma segunda fonte de verdade. Traduz as escalas 1–7 para rótulo, mostra
+ * "completo" como Sim/Não, duração em minutos, e omite o ruído técnico
+ * (semente, ordem_*, user_agent).
+ *
+ * USO: rode UMA vez. Ou recarregue a planilha e use o menu "Coleta PPGAD →
+ * Configurar aba leitura", ou aqui no editor selecione a função
+ * configurarAbaLeitura e clique Executar (autorize na 1ª vez). Pode rodar de
+ * novo a qualquer momento: recria a aba do zero (idempotente).
+ *
+ * Os separadores de argumento usam ";" (locale pt-BR desta planilha). Neste
+ * ambiente o setFormula() interpreta no locale da planilha — não em US/vírgula.
+ * Se um dia a planilha for recriada em locale US, troque SEP para ",".
+ * ------------------------------------------------------------------------- */
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('Coleta PPGAD')
+    .addItem('Configurar aba "leitura"', 'configurarAbaLeitura')
+    .addItem('Configurar aba "painel"', 'configurarAbaPainel')
+    .addToUi();
+}
+
+function configurarAbaLeitura() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(ABA_RESPOSTAS)) {
+    throw new Error('A aba "' + ABA_RESPOSTAS + '" ainda não existe — ' +
+                    'envie ao menos 1 resposta antes de configurar a leitura.');
+  }
+  var sh = ss.getSheetByName(ABA_LEITURA);
+  if (sh) sh.clear(); else sh = ss.insertSheet(ABA_LEITURA);
+
+  var Q = "'" + ABA_RESPOSTAS + "'"; // nome da aba citado em fórmula (com aspas)
+  var S = ';'; // separador de argumentos no locale pt-BR (US seria ',')
+
+  // Cabeçalhos: 4 fixos + os de "respostas" puxados por fórmula (sem digitar).
+  sh.getRange('A1:D1').setValues([['Data/hora', 'ID', 'Completo?', 'Duração (min)']]);
+  sh.getRange('E1').setFormula('=ARRAYFORMULA(' + Q + '!J1:AS1)');   // GC01..DEC36
+  sh.getRange('AO1').setFormula('=ARRAYFORMULA(' + Q + '!AT1:BG1)'); // D1..D9_outro
+
+  // Linha 2: fórmulas que "derramam" para baixo/lados e se auto-atualizam.
+  var temResp = '=ARRAYFORMULA(IF(' + Q + '!B2:B=""' + S + '""' + S; // prefixo: só linhas com submission_id
+  sh.getRange('A2').setFormula(temResp + Q + '!A2:A))');
+  sh.getRange('B2').setFormula(temResp + Q + '!B2:B))');
+  sh.getRange('C2').setFormula(temResp + 'IF(' + Q + '!C2:C' + S + '"Sim"' + S + '"Não")))');
+  sh.getRange('D2').setFormula(temResp + 'ROUND(' + Q + '!D2:D/60' + S + '1)))');
+
+  var rot = ESCALA_ROTULOS.map(function (s) { return '"' + s + '"'; }).join(S);
+  // IFERROR: célula vazia ou não-numérica (ex.: "-") passa adiante sem quebrar o CHOOSE.
+  sh.getRange('E2').setFormula(
+    '=MAP(' + Q + '!J2:AS' + S + 'LAMBDA(v' + S + 'IFERROR(CHOOSE(v' + S + rot + ')' + S + 'v)))'
+  );
+
+  sh.getRange('AO2').setFormula('=ARRAYFORMULA(IF(' + Q + '!AT2:BG=""' + S + '""' + S + Q + '!AT2:BG))');
+
+  sh.setFrozenRows(1);
+  SpreadsheetApp.flush();
+}
+
+/* ---------------------------------------------------------------------------
+ * Aba "painel" — dashboard de contagens gerais, montado por código.
+ *
+ * KPIs (total de respostas, % completas, duração mediana) + uma tabela de
+ * frequência por dimensão (D1 IES, D9 segmento, D5 função, D4 grau, D2 gênero,
+ * D6 formação), via QUERY group by — atualiza sozinho a cada nova resposta e
+ * descobre categorias novas (inclusive "Outro") automaticamente.
+ *
+ * Lê de "respostas" (base canônica). Os blocos ficam lado a lado, em colunas
+ * separadas, para não colidirem ao "derramar". Para o filtro INTERATIVO (clicar
+ * e fatiar), use Tabela Dinâmica + Segmentadores — ver exportar_para_spss.md.
+ *
+ * USO: igual à leitura — menu "Coleta PPGAD → Configurar aba painel" (ou rode
+ * configurarAbaPainel no editor). Idempotente: recria a aba do zero.
+ * ------------------------------------------------------------------------- */
+
+function configurarAbaPainel() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(ABA_RESPOSTAS)) {
+    throw new Error('A aba "' + ABA_RESPOSTAS + '" ainda não existe — ' +
+                    'envie ao menos 1 resposta antes de configurar o painel.');
+  }
+  var sh = ss.getSheetByName(ABA_PAINEL);
+  if (sh) sh.clear(); else sh = ss.insertSheet(ABA_PAINEL);
+  sh.getRange('A1:Q8').breakApart(); // desfaz mesclagens de execução anterior
+
+  var Q = "'" + ABA_RESPOSTAS + "'";
+  var S = ';'; // separador de argumentos no locale pt-BR (US seria ',')
+
+  // Banner do título (mesclado em toda a largura).
+  sh.getRange('A1:Q1').merge();
+  sh.getRange('A1').setValue('Painel — Coleta PPGAD (atualiza sozinho)')
+    .setFontWeight('bold').setFontSize(14)
+    .setBackground('#0b5394').setFontColor('#ffffff')
+    .setVerticalAlignment('middle');
+  sh.setRowHeight(1, 32);
+
+  // KPIs
+  sh.getRange('A3').setValue('Total de respostas');
+  sh.getRange('B3').setFormula('=COUNTA(' + Q + '!B2:B)');
+  sh.getRange('A4').setValue('% completas');
+  sh.getRange('B4')
+    .setFormula('=IFERROR(COUNTIF(' + Q + '!C2:C' + S + 'TRUE)/COUNTA(' + Q + '!B2:B)' + S + '0)')
+    .setNumberFormat('0%');
+  sh.getRange('A5').setValue('Duração mediana (min)');
+  sh.getRange('B5').setFormula('=IFERROR(ROUND(MEDIAN(' + Q + '!D2:D)/60' + S + '1)' + S + '"")');
+  sh.getRange('A3:B5').setBackground('#f3f6fb');
+  sh.getRange('A3:A5').setFontWeight('bold');
+  sh.getRange('B3:B5').setFontWeight('bold').setFontSize(12).setFontColor('#0b5394')
+    .setHorizontalAlignment('left');
+
+  // Tabelas de frequência. Como o range começa em A, as letras do QUERY = letras
+  // reais da planilha. [destino, colN, colNaResp, rótulo, títuloDaSeção]
+  var dims = [
+    ['A', 'B', 'AT', 'IES',                'Por IES — D1'],
+    ['D', 'E', 'BF', 'Segmento',           'Por segmento — D9'],
+    ['G', 'H', 'AZ', 'Função de gestão',   'Por função de gestão — D5'],
+    ['J', 'K', 'AX', 'Grau de instrução',  'Por grau de instrução — D4'],
+    ['M', 'N', 'AU', 'Gênero',             'Por gênero — D2'],
+    ['P', 'Q', 'BC', 'Formação em Gestão', 'Por formação em Gestão — D6']
+  ];
+  for (var i = 0; i < dims.length; i++) {
+    var dest = dims[i][0], ncol = dims[i][1], col = dims[i][2],
+        rotulo = dims[i][3], titulo = dims[i][4];
+
+    sh.getRange(dest + '7:' + ncol + '7').merge();
+    sh.getRange(dest + '7').setValue(titulo).setFontWeight('bold').setBackground('#cfe2f3');
+
+    var q = 'select ' + col + ', count(' + col + ') ' +
+            'where ' + col + " is not null and " + col + " <> '' " +
+            'group by ' + col + ' order by count(' + col + ') desc ' +
+            "label " + col + " '" + rotulo + "', count(" + col + ") 'n'";
+    sh.getRange(dest + '8').setFormula(
+      '=IFERROR(QUERY(' + Q + '!A2:BG' + S + '"' + q + '"' + S + '0)' + S + '"sem dados")'
+    );
+
+    sh.getRange(dest + '8:' + ncol + '8').setFontWeight('bold').setBackground('#e8eef7');
+    sh.getRange(ncol + '8:' + ncol).setHorizontalAlignment('right');
+  }
+
+  // Larguras: rótulos largos, "n" estreitos, respiro entre os blocos.
+  [1, 4, 7, 10, 13, 16].forEach(function (c) { sh.setColumnWidth(c, 185); });
+  [2, 5, 8, 11, 14, 17].forEach(function (c) { sh.setColumnWidth(c, 52); });
+  [3, 6, 9, 12, 15].forEach(function (c) { sh.setColumnWidth(c, 28); });
+
+  sh.setFrozenRows(1);
+  SpreadsheetApp.flush(); // garante que os QUERY já preencheram antes de medir/plotar
+
+  // Gráficos de barras (um por dimensão), em grid 3x2 abaixo das tabelas.
+  sh.getCharts().forEach(function (c) { sh.removeChart(c); }); // limpa execução anterior
+  var col3 = [1, 7, 13], rowBase = [13, 28];
+  for (var j = 0; j < dims.length; j++) {
+    var d2 = dims[j][0], n2 = dims[j][1], tit = dims[j][4];
+    // mede quantas linhas (cabeçalho + categorias) o QUERY produziu nesta coluna.
+    var colVals = sh.getRange(d2 + '8:' + d2 + '50').getValues();
+    var nrows = 0;
+    while (nrows < colVals.length && colVals[nrows][0] !== '' && colVals[nrows][0] != null) nrows++;
+    if (nrows < 2) continue; // ainda sem categorias para plotar
+    var chart = sh.newChart()
+      .asColumnChart()
+      .addRange(sh.getRange(d2 + '8:' + n2 + (8 + nrows - 1)))
+      .setNumHeaders(1)
+      .setPosition(rowBase[Math.floor(j / 3)], col3[j % 3], 5, 5)
+      .setOption('title', tit)
+      .setOption('legend', { position: 'none' })
+      .setOption('width', 330)
+      .setOption('height', 200)
+      .build();
+    sh.insertChart(chart);
+  }
 }
