@@ -40,7 +40,8 @@ const sandbox = {
   window: {},
   fetch: () => Promise.resolve({ json: () => Promise.resolve({ ok: true }) }),
   console: console,
-  setTimeout: () => 0, clearTimeout: () => {}
+  setTimeout: () => 0, clearTimeout: () => {},
+  location: { search: '' }, URLSearchParams: URLSearchParams // p/ o link por instituição (?ies=)
 };
 vm.createContext(sandbox);
 try { new vm.Script(src); }            // compila => pega erro de sintaxe
@@ -106,6 +107,32 @@ need(Array.isArray(p.ordem_dec) && p.ordem_dec.length === 16, 'ordem_dec != 16')
 need(p.ordem_gc.every(id => /^GC\d\d$/.test(id)),  'ordem_gc sem padding (ex.: GC4 em vez de GC04)');
 need(p.ordem_gov.every(id => /^GOV\d\d$/.test(id)), 'ordem_gov fora do padrão GOVnn');
 need(p.ordem_dec.every(id => /^DEC\d\d$/.test(id)), 'ordem_dec fora do padrão DECnn');
+
+// 6b) link por instituição (?ies=): D1 pré-preenchido e oculto; sem ies => normal
+function carregarComBusca(search) {
+  const sb = {
+    navigator: { userAgent: 't' },
+    document: { getElementById: () => null, querySelectorAll: () => [] },
+    window: {}, console: console, setTimeout: () => 0, clearTimeout: () => {},
+    fetch: () => Promise.resolve({ json: () => Promise.resolve({}) }),
+    location: { search: search }, URLSearchParams: URLSearchParams
+  };
+  vm.createContext(sb); vm.runInContext(src, sb);
+  return sb.__test;
+}
+function d1Visivel(t) {
+  const perfil = t.SECTIONS.find(s => s.id === 'perfil');
+  return perfil.questions.filter(q => !q.showIf || q.showIf(t.state.answers)).some(q => q.id === 'D1');
+}
+[['?ies=UFPA', 'UFPA'], ['?ies=unifesspa', 'UNIFESSPA'], ['?ies=UFOPA', 'UFOPA']].forEach(([s, esp]) => {
+  const t = carregarComBusca(s);
+  need(t.state.answers.D1 === esp, s + ': D1 não pré-preenchido (' + t.state.answers.D1 + ')');
+  need(!d1Visivel(t), s + ': D1 deveria estar oculto');
+});
+const tBad = carregarComBusca('?ies=xpto');
+need(tBad.state.answers.D1 == null && d1Visivel(tBad), 'ies inválida deveria cair no fluxo normal (D1 visível)');
+const tNone = carregarComBusca('');
+need(tNone.state.answers.D1 == null && d1Visivel(tNone), 'sem ies: D1 deveria estar visível e vazio');
 
 // 6) relatório
 console.log('--- valida_payload ---');

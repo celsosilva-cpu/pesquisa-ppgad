@@ -24,6 +24,16 @@ Respondente → index.html → (POST text/plain) → Apps Script → Planilha Go
                                                                               └─ aba "emails" (opcional, SEM vínculo)
 ```
 
+## Links de distribuição (por IES)
+
+O questionário aceita o parâmetro `?ies=` na URL: ele pré-seleciona a instituição
+(D1) e **oculta** essa pergunta, amarrando o link a uma IES. Sem o parâmetro (ou
+com valor inválido), o questionário funciona normalmente e D1 aparece.
+
+- `…/pesquisa-ppgad/?ies=UNIFESSPA`
+- `…/pesquisa-ppgad/?ies=UFOPA`
+- `…/pesquisa-ppgad/?ies=UFPA`
+
 ## Privacidade
 
 Dados de respondentes **nunca** entram no git (ver `.gitignore`). A análise é

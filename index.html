@@ -421,7 +421,7 @@ const SECTIONS = [
     ],21,"DEC") },
   { id:"perfil", eyebrow:"Parte IV", title:"Seu perfil", kind:"mixed",
     questions: [
-      {id:"D1", kind:"choice", text:"Nome da Instituição Federal de Ensino Superior (IFES)", options:["UNIFESSPA","UFOPA","UFPA"]},
+      {id:"D1", kind:"choice", text:"Nome da Instituição Federal de Ensino Superior (IFES)", options:["UNIFESSPA","UFOPA","UFPA"], showIf:(a)=>!IES_LOCK},
       {id:"D2", kind:"choice", text:"Com qual gênero você se identifica?", options:["Feminino","Masculino","Não binário","Prefiro não informar"], other:true},
       {id:"D3", kind:"text", text:"Qual é a sua idade?", placeholder:"Em anos", numeric:true},
       {id:"D4", kind:"choice", text:"Qual é o seu grau de instrução mais elevado?", options:["Ensino médio completo","Graduação completa","Especialização","Mestrado","Doutorado","Pós-doutorado"], other:true},
@@ -564,6 +564,18 @@ const NEXT_LEAD = [
 /* ---------- estado ---------- */
 const state = { phase:"intro", si:0, qi:0, answers:{}, consent:false, saving:false, reviewing:{}, defOpen:{} };
 let saveTimer = null;
+
+/* ---------- link por instituição: ?ies=UFPA | UNIFESSPA | UFOPA ----------
+   Pré-seleciona D1 e oculta a pergunta (showIf), amarrando o link a uma IES.
+   Parâmetro ausente ou inválido => questionário normal (D1 aparece). */
+let IES_LOCK = null;
+(function(){
+  const VALIDAS = ["UNIFESSPA","UFOPA","UFPA"];
+  const p = new URLSearchParams(location.search).get("ies");
+  if(!p) return;
+  const match = VALIDAS.find(v => v.toLowerCase() === p.trim().toLowerCase());
+  if(match){ IES_LOCK = match; state.answers.D1 = match; }
+})();
 
 /* ---------- utilidades ---------- */
 function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
