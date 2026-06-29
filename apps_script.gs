@@ -25,6 +25,67 @@ var ABA_PAINEL    = 'painel';  // dashboard de contagens (QUERY, atualiza sozinh
 var ESCALA_ROTULOS = ['Nunca', 'Raramente', 'Poucas vezes', 'Às vezes',
                       'Muitas vezes', 'Quase sempre', 'Sempre'];
 
+/* Enunciados na íntegra (cabeçalho da aba "leitura"). FONTE: index.html — se uma
+   pergunta mudar lá, atualize aqui. PERGUNTAS_ESCALA segue a ordem de SCALE_COLS
+   (GC01..GC10, GOV11..GOV20, DEC21..DEC36); PERGUNTAS_DEMO segue DEMO_COLS. */
+var PERGUNTAS_ESCALA = [
+  // GC01..GC10 — Gestão do Conhecimento
+  'Promovo regularmente espaços para que minha equipe compartilhe conhecimentos, experiências e aprendizados relevantes para a gestão.',
+  'Valorizo publicamente os casos em que colegas compartilham novos conhecimentos ou experiências.',
+  'Estimulo um ambiente de confiança em que a equipe possa expor dúvidas, pedir ajuda e compartilhar experiências sem receio de julgamento.',
+  'Mantenho canais formais e permanentes de comunicação para circulação de orientações, práticas e dúvidas entre a equipe.',
+  'Adoto padrões de nomenclatura e classificação da informação (títulos, palavras-chave) para facilitar o registro e a localização de documentos e dados.',
+  'Utilizo identificadores únicos nos sistemas e registros da unidade para reduzir duplicidades e facilitar a recuperação das informações.',
+  'Organizo atividades estruturadas de aprendizagem com a equipe, com base em situações reais do setor.',
+  'Promovo momentos de reflexão coletiva sobre projetos e atividades para desenvolver competências da equipe.',
+  'Emprego modelo padronizado para registrar informações relevantes de projetos, incluindo fonte, data e responsáveis.',
+  'Após concluir tarefas ou demandas relevantes, registro e compartilho as lições aprendidas em base institucional apropriada.',
+  // GOV11..GOV20 — Governança Pública
+  'Reforço junto à minha equipe os padrões de integridade e conduta ética esperados na unidade.',
+  'Nos processos que coordeno, promovo o envolvimento das partes interessadas nas decisões que afetam a unidade.',
+  'Utilizo o planejamento estratégico institucional (PDI) para definir prioridades e orientar decisões de gestão.',
+  'Acompanho regularmente metas e indicadores da unidade para verificar o alcance dos objetivos.',
+  'Nos processos administrativos, identifico e avalio riscos relevantes para resultados, conformidade e uso de recursos.',
+  'Quando necessário, utilizo os canais institucionais adequados para registrar e encaminhar irregularidades.',
+  'Antes de tomar decisões relevantes, verifico e formalizo eventuais conflitos de interesse ou impedimentos.',
+  'Comunico com clareza e tempestividade os critérios que fundamentam as decisões administrativas da unidade.',
+  'Quando há descumprimento de objetivos, prazos ou normas, acompanho a adoção de providências cabíveis.',
+  'Presto contas dos resultados da unidade às instâncias competentes e, quando aplicável, aos órgãos de controle.',
+  // DEC21..DEC36 — Tomada de Decisão
+  'Baseio decisões relevantes em dados sistemáticos, informações verificadas e critérios claramente definidos.',
+  'Registro as evidências e fontes utilizadas para sustentar decisões relevantes da unidade.',
+  'Antes de concluir uma decisão, verifico se a alternativa escolhida está alinhada aos objetivos da unidade.',
+  'Reviso a consistência técnica da decisão antes de formalizá-la, para reduzir erros e escolhas mal fundamentadas.',
+  'Tomo decisões no tempo adequado às demandas da unidade, sem postergações desnecessárias.',
+  'Comunico decisões relevantes com agilidade suficiente para permitir sua execução oportuna.',
+  'Traduzo decisões em encaminhamentos claros para sua execução.',
+  'Acompanho se as decisões implementadas produzem os resultados pretendidos pela unidade.',
+  'Em situações complexas, identifico padrões relevantes a partir de múltiplos sinais do contexto.',
+  'Integro informações dispersas da situação para formar uma compreensão global antes de decidir.',
+  'Recorro ao conhecimento construído na prática quando nem todas as informações estão explicitadas.',
+  'Utilizo aprendizados implícitos da experiência para lidar com situações novas ou ambíguas.',
+  'Em situações semelhantes às já vivenciadas, uso lições da experiência anterior para orientar minha escolha.',
+  'Apoio-me em experiências acumuladas para antecipar consequências prováveis das alternativas consideradas.',
+  'Distingo quando uma percepção intuitiva decorre de experiência válida e quando é apenas impressão subjetiva.',
+  'Avalio se uma situação exige análise detalhada, julgamento intuitivo ou ambos antes de decidir.'
+];
+var PERGUNTAS_DEMO = [
+  'Nome da Instituição Federal de Ensino Superior (IFES)',          // D1
+  'Com qual gênero você se identifica?',                            // D2
+  'Gênero — outro (texto livre)',                                   // D2_outro
+  'Qual é a sua idade?',                                            // D3
+  'Qual é o seu grau de instrução mais elevado?',                  // D4
+  'Grau de instrução — outro (texto livre)',                        // D4_outro
+  'Qual alternativa melhor descreve sua função de gestão atual?',   // D5
+  'Qual alternativa melhor descreve sua unidade de atuação?',       // D5a
+  'Unidade de atuação — outro (texto livre)',                       // D5a_outro
+  'Você possui formação acadêmica em Gestão (graduação ou pós)?',   // D6
+  'Há quanto tempo você atua na instituição atual?',               // D7
+  'Há quanto tempo exerce ou exerceu cargo de gestão no serviço público?', // D8
+  'A qual segmento funcional você pertence?',                       // D9
+  'Segmento funcional — outro (texto livre)'                        // D9_outro
+];
+
 /* Ordem CANÔNICA das colunas de "respostas" — casa 1:1 com os nomes no SPSS.
    Mexer aqui = mexer no exportar_para_spss.md. */
 var SCALE_COLS = (function () {
@@ -249,10 +310,16 @@ function configurarAbaLeitura() {
   var Q = "'" + ABA_RESPOSTAS + "'"; // nome da aba citado em fórmula (com aspas)
   var S = ';'; // separador de argumentos no locale pt-BR (US seria ',')
 
-  // Cabeçalhos: 4 fixos + os de "respostas" puxados por fórmula (sem digitar).
+  // Cabeçalhos: 4 fixos + as perguntas na íntegra ("CÓDIGO — enunciado").
+  if (PERGUNTAS_ESCALA.length !== SCALE_COLS.length ||
+      PERGUNTAS_DEMO.length !== DEMO_COLS.length) {
+    throw new Error('Listas de perguntas fora de sincronia com as colunas (veja apps_script.gs).');
+  }
   sh.getRange('A1:D1').setValues([['Data/hora', 'ID', 'Completo?', 'Duração (min)']]);
-  sh.getRange('E1').setFormula('=ARRAYFORMULA(' + Q + '!J1:AS1)');   // GC01..DEC36
-  sh.getRange('AO1').setFormula('=ARRAYFORMULA(' + Q + '!AT1:BG1)'); // D1..D9_outro
+  var cabE = SCALE_COLS.map(function (c, i) { return c + ' — ' + PERGUNTAS_ESCALA[i]; });
+  sh.getRange(1, 5, 1, cabE.length).setValues([cabE]);  // E1..AN1 (escalas)
+  var cabD = DEMO_COLS.map(function (c, i) { return c + ' — ' + PERGUNTAS_DEMO[i]; });
+  sh.getRange(1, 41, 1, cabD.length).setValues([cabD]); // AO1..BB1 (demográficos)
 
   // Linha 2: fórmulas que "derramam" para baixo/lados e se auto-atualizam.
   var temResp = '=ARRAYFORMULA(IF(' + Q + '!B2:B=""' + S + '""' + S; // prefixo: só linhas com submission_id
@@ -269,6 +336,12 @@ function configurarAbaLeitura() {
 
   sh.getRange('AO2').setFormula('=ARRAYFORMULA(IF(' + Q + '!AT2:BG=""' + S + '""' + S + Q + '!AT2:BG))');
 
+  // Cabeçalho: negrito, com quebra de texto (perguntas longas) e largura das colunas.
+  sh.getRange('A1:BB1').setFontWeight('bold').setWrap(true).setVerticalAlignment('top');
+  sh.setRowHeight(1, 96);
+  sh.setColumnWidth(2, 150);                                   // ID
+  for (var k = 5; k <= 54; k++) sh.setColumnWidth(k, 200);     // E..BB: perguntas
+  sh.setFrozenColumns(2);                                      // trava Data/hora + ID ao rolar
   sh.setFrozenRows(1);
   SpreadsheetApp.flush();
 }

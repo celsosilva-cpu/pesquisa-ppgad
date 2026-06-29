@@ -177,8 +177,11 @@ cada execução recria a aba do zero. Não exige re-deploy do Web App.
 
 - **`leitura`** — espelho legível: escalas 1–7 traduzidas para rótulo
   (Nunca…Sempre), `completo` como Sim/Não, duração em minutos, sem o ruído técnico
-  (semente, ordem_*, user_agent). É a versão "normal" para leitura humana; **não**
-  use para o SPSS (lá os números são necessários).
+  (semente, ordem_*, user_agent). O cabeçalho traz as **perguntas na íntegra**
+  (`GC01 — enunciado…`), o que duplica os textos do `index.html` nas listas
+  `PERGUNTAS_ESCALA`/`PERGUNTAS_DEMO` do `apps_script.gs` — se mudar uma pergunta
+  no questionário, atualize lá também. É a versão "normal" para leitura humana;
+  **não** use para o SPSS (lá os números são necessários).
 - **`painel`** — dashboard de contagens: KPIs (total, % completas, duração mediana)
   e frequência por IES (D1), segmento (D9), função (D5), grau (D4), gênero (D2) e
   formação em gestão (D6), via `QUERY`, com gráficos de barras. Descobre categorias
